@@ -114,6 +114,15 @@
   .dim { color: #555; }
   .bright { color: #e0e0e0; }
 
+  /* Scope buttons */
+  .scope-btn {
+    padding: 5px 10px; border: 1px solid #333; border-radius: 4px;
+    background: transparent; color: #777; font-family: inherit;
+    font-size: 10px; cursor: pointer; transition: all 0.15s;
+  }
+  .scope-btn:hover { border-color: #555; color: #ccc; }
+  .scope-btn.active { border-color: #ff3333; color: #ff3333; background: rgba(255,51,51,0.1); }
+
   /* Flex helpers */
   .flex { display: flex; }
   .flex-between { display: flex; justify-content: space-between; align-items: center; }
@@ -197,11 +206,24 @@
     <div class="dim" style="font-size: 10px;" id="selection-hint">Select a frame or component, then scan</div>
   </div>
 
+  <!-- Scope selector -->
+  <div class="card mb-8">
+    <div class="bright mb-4" style="font-size: 10px; font-weight: 600;">What are you scanning?</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 4px;" id="scope-buttons">
+      <button class="scope-btn active" data-scope="screen">Full screen</button>
+      <button class="scope-btn" data-scope="flow">User flow</button>
+      <button class="scope-btn" data-scope="component">Component</button>
+      <button class="scope-btn" data-scope="dialog">Dialog</button>
+    </div>
+    <div class="dim mt-8" style="font-size: 9px;" id="scope-hint">
+      Analyzes as a complete application screen — checks auth, navigation, compliance
+    </div>
+  </div>
+
   <!-- Data disclosure before scan -->
-  <div class="card mb-8" id="data-disclosure" style="border-color: rgba(255,170,0,0.3);">
-    <div style="color: #ffaa00; font-size: 10px; font-weight: 600; margin-bottom: 4px;">What gets sent</div>
-    <div class="dim" style="font-size: 10px; line-height: 1.5;">
-      Node names, text content, component names, and hierarchy of the selected frame will be sent to Anthropic's Claude API over HTTPS for analysis. No images or visual data are sent.
+  <div class="card mb-8" id="data-disclosure" style="border-color: rgba(255,170,0,0.2);">
+    <div style="color: #ffaa00; font-size: 9px; line-height: 1.5;">
+      Node names, text, and hierarchy sent to Claude API over HTTPS. No images sent.
     </div>
   </div>
 
@@ -299,6 +321,14 @@ function deobfuscate(str) {
 let apiKey = "";
 let scanData = null;
 let threatReport = null;
+let scanScope = "screen";
+
+const SCOPE_HINTS = {
+  screen: "Analyzes as a complete application screen — checks auth, navigation, compliance",
+  flow: "Analyzes as a multi-step user flow — checks flow integrity, state management, data handling",
+  component: "Analyzes as a reusable component — checks input safety, accessibility, error states",
+  dialog: "Analyzes as a modal/dialog — checks confirmation patterns, error handling, action clarity",
+};
 
 // ── Elements ───────────────────────────────────
 const tabs = document.querySelectorAll('.tab');
@@ -328,6 +358,16 @@ tabs.forEach(tab => {
     tabContents.forEach(tc => tc.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Scope selection ─────────────────────────────
+document.querySelectorAll('.scope-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.scope-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    scanScope = btn.dataset.scope;
+    document.getElementById('scope-hint').textContent = SCOPE_HINTS[scanScope] || '';
   });
 });
 
@@ -580,7 +620,16 @@ function buildDesignPrompt(data) {
 
 // ── System prompt ──────────────────────────────
 function buildSystemPrompt() {
+  const scopeInstructions = {
+    screen: `You are analyzing a COMPLETE APPLICATION SCREEN. Check for authentication flows, navigation structure, session management, consent mechanisms, AI disclosure, data protection, and full compliance coverage. Flag missing screens (e.g., no login) as findings.`,
+    flow: `You are analyzing a MULTI-STEP USER FLOW (e.g., onboarding, checkout, signup). Focus on flow integrity, data handling between steps, state management, consent capture at the right moment, and whether the flow exposes data or creates trust gaps. Do NOT flag missing screens outside this flow.`,
+    component: `You are analyzing a SINGLE REUSABLE COMPONENT (e.g., a form, card, input). Focus only on this component's specific concerns: input validation, error states, accessibility, data exposure within the component. Do NOT flag application-level issues like missing login pages or navigation.`,
+    dialog: `You are analyzing a DIALOG or MODAL (e.g., confirmation, alert, consent popup). Focus on: is the action clear? Is the destructive action visually distinct? Is there a cancel/undo path? Are error states handled? Is the language unambiguous? Do NOT flag application-level compliance or missing screens.`,
+  };
+
   return `You are a senior security architect performing a UI-layer threat model on a Figma design.
+
+SCOPE: ${scopeInstructions[scanScope] || scopeInstructions.screen}
 
 Analyze the design and produce a JSON response with this exact structure:
 {
