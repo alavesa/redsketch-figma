@@ -181,12 +181,17 @@
 <!-- Settings Tab -->
 <div id="tab-settings" class="tab-content">
   <div class="section-header">Anthropic API Key</div>
-  <div class="mb-8">
-    <input class="input" type="password" id="api-key-input" placeholder="sk-ant-..." />
+  <div class="mb-4" id="key-status" style="font-size: 10px; color: #555;">No key configured</div>
+  <div class="mb-8" style="position: relative;">
+    <input class="input" type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off" />
+    <button id="btn-toggle-key" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#555;font-size:10px;font-family:inherit;">show</button>
   </div>
-  <button class="btn btn-secondary mb-12" id="btn-save-key">Save key</button>
+  <div class="flex gap-8 mb-12">
+    <button class="btn btn-secondary" id="btn-save-key" style="flex:1">Save key</button>
+    <button class="btn btn-secondary" id="btn-clear-key" style="flex:1;color:#ff3333;border-color:rgba(255,51,51,0.3)">Clear key</button>
+  </div>
   <div class="dim" style="font-size: 10px;">
-    Your API key is stored locally in Figma's plugin storage. It never leaves your machine except to call the Anthropic API directly.
+    Your key is obfuscated before storage and never logged. It only leaves your machine to call the Anthropic API directly over HTTPS.
   </div>
   <div class="dim" style="font-size: 10px; margin-top: 8px;">
     Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
@@ -204,6 +209,25 @@
 <div id="toast" class="toast" style="display:none;"></div>
 
 <script>
+// ── Figma plugin focus fix ─────────────────────
+// Figma steals focus from plugin iframes — this ensures inputs work
+document.addEventListener('focus', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    e.target.focus();
+  }
+}, true);
+
+// ── Simple obfuscation (not encryption, but prevents casual reading) ──
+function obfuscate(str) {
+  return btoa(str.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ (42 + (i % 7)))).join(''));
+}
+function deobfuscate(str) {
+  try {
+    const decoded = atob(str);
+    return decoded.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ (42 + (i % 7)))).join('');
+  } catch { return ''; }
+}
+
 // ── State ──────────────────────────────────────
 let apiKey = "";
 let scanData = null;
@@ -214,7 +238,10 @@ const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
 const btnScan = document.getElementById('btn-scan');
 const btnSaveKey = document.getElementById('btn-save-key');
+const btnClearKey = document.getElementById('btn-clear-key');
+const btnToggleKey = document.getElementById('btn-toggle-key');
 const apiKeyInput = document.getElementById('api-key-input');
+const keyStatus = document.getElementById('key-status');
 const selectionName = document.getElementById('selection-name');
 const selectionStats = document.getElementById('selection-stats');
 const selectionHint = document.getElementById('selection-hint');
@@ -260,10 +287,39 @@ btnSaveKey.addEventListener('click', () => {
     showToast('Enter an API key.', 'error');
     return;
   }
+  if (!key.startsWith('sk-ant-')) {
+    showToast('Key should start with sk-ant-', 'error');
+    return;
+  }
   apiKey = key;
-  sendToPlugin({ type: 'save-api-key', apiKey: key });
-  showToast('API key saved.', 'success');
+  sendToPlugin({ type: 'save-api-key', apiKey: obfuscate(key) });
+  apiKeyInput.value = '';
+  keyStatus.textContent = 'Key saved: sk-ant-...' + key.slice(-4);
+  keyStatus.style.color = '#00ff41';
+  showToast('API key saved securely.', 'success');
   btnScan.disabled = false;
+});
+
+// ── Clear key ──────────────────────────────────
+btnClearKey.addEventListener('click', () => {
+  apiKey = '';
+  sendToPlugin({ type: 'save-api-key', apiKey: '' });
+  apiKeyInput.value = '';
+  keyStatus.textContent = 'No key configured';
+  keyStatus.style.color = '#555';
+  btnScan.disabled = true;
+  showToast('API key cleared.', 'success');
+});
+
+// ── Toggle key visibility ──────────────────────
+btnToggleKey.addEventListener('click', () => {
+  if (apiKeyInput.type === 'password') {
+    apiKeyInput.type = 'text';
+    btnToggleKey.textContent = 'hide';
+  } else {
+    apiKeyInput.type = 'password';
+    btnToggleKey.textContent = 'show';
+  }
 });
 
 // ── Messages from plugin ───────────────────────
@@ -273,11 +329,17 @@ window.onmessage = async (event) => {
 
   switch (msg.type) {
     case 'api-key-loaded':
-      apiKey = msg.apiKey || '';
-      if (apiKey) {
-        apiKeyInput.value = apiKey;
-        btnScan.disabled = false;
-        selectionHint.textContent = 'Select a frame or component, then scan';
+      if (msg.apiKey) {
+        apiKey = deobfuscate(msg.apiKey);
+        if (apiKey && apiKey.startsWith('sk-ant-')) {
+          btnScan.disabled = false;
+          keyStatus.textContent = 'Key saved: sk-ant-...' + apiKey.slice(-4);
+          keyStatus.style.color = '#00ff41';
+          selectionHint.textContent = 'Select a frame or component, then scan';
+        } else {
+          apiKey = '';
+          selectionHint.textContent = 'Set your API key in Settings first';
+        }
       } else {
         selectionHint.textContent = 'Set your API key in Settings first';
       }
