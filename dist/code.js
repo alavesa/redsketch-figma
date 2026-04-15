@@ -16,6 +16,22 @@
   function scanNode(node, nodes, textContent, componentNames, depth) {
     if (nodes.length >= MAX_NODES)
       return;
+    if (node.type === "TEXT") {
+      const text = node.characters;
+      if (text && text.trim()) {
+        if (textContent.length < MAX_TEXT) {
+          textContent.push(text.slice(0, 150));
+        }
+        nodes.push({
+          id: node.id,
+          name: node.name,
+          type: node.type,
+          characters: text.slice(0, 200),
+          depth
+        });
+      }
+      return;
+    }
     if (RELEVANT_TYPES.has(node.type)) {
       const scanned = {
         id: node.id,
@@ -23,15 +39,6 @@
         type: node.type,
         depth
       };
-      if (node.type === "TEXT") {
-        const text = node.characters;
-        if (text) {
-          scanned.characters = text.slice(0, 200);
-          if (textContent.length < MAX_TEXT) {
-            textContent.push(text.slice(0, 150));
-          }
-        }
-      }
       if (node.type === "COMPONENT") {
         componentNames.push(node.name);
       }
@@ -52,8 +59,18 @@
   }
   function buildHierarchy(node, depth) {
     var _a, _b;
-    if (!RELEVANT_TYPES.has(node.type) && depth > 0)
+    if (!RELEVANT_TYPES.has(node.type) && node.type !== "TEXT" && depth > 0) {
+      if ("children" in node) {
+        let childLines = "";
+        for (const child of node.children) {
+          childLines += buildHierarchy(child, depth);
+          if (childLines.length > MAX_HIERARCHY_CHARS)
+            break;
+        }
+        return childLines;
+      }
       return "";
+    }
     const indent = "  ".repeat(depth);
     const textSuffix = node.type === "TEXT" ? ` "${(_b = (_a = node.characters) == null ? void 0 : _a.slice(0, 80)) != null ? _b : ""}"` : "";
     let line = `${indent}[${node.type}] ${node.name}${textSuffix}

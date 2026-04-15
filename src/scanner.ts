@@ -23,6 +23,25 @@ export function scanNode(
 ): void {
   if (nodes.length >= MAX_NODES) return;
 
+  // Always extract text from TEXT nodes, even if the parent isn't a "relevant" type
+  if (node.type === "TEXT") {
+    const text = (node as TextNode).characters;
+    if (text && text.trim()) {
+      if (textContent.length < MAX_TEXT) {
+        textContent.push(text.slice(0, 150));
+      }
+      // Always add TEXT nodes
+      nodes.push({
+        id: node.id,
+        name: node.name,
+        type: node.type,
+        characters: text.slice(0, 200),
+        depth,
+      });
+    }
+    return;
+  }
+
   if (RELEVANT_TYPES.has(node.type)) {
     const scanned: ScannedNode = {
       id: node.id,
@@ -30,16 +49,6 @@ export function scanNode(
       type: node.type,
       depth,
     };
-
-    if (node.type === "TEXT") {
-      const text = (node as TextNode).characters;
-      if (text) {
-        scanned.characters = text.slice(0, 200);
-        if (textContent.length < MAX_TEXT) {
-          textContent.push(text.slice(0, 150));
-        }
-      }
-    }
 
     if (node.type === "COMPONENT") {
       componentNames.push(node.name);
@@ -56,6 +65,7 @@ export function scanNode(
     nodes.push(scanned);
   }
 
+  // Walk ALL children to find deeply nested text
   if ("children" in node) {
     for (const child of (node as FrameNode).children) {
       scanNode(child, nodes, textContent, componentNames, depth + 1);
@@ -64,7 +74,19 @@ export function scanNode(
 }
 
 export function buildHierarchy(node: SceneNode, depth: number): string {
-  if (!RELEVANT_TYPES.has(node.type) && depth > 0) return "";
+  // Skip non-relevant types UNLESS they have children (walk deeper) or are TEXT
+  if (!RELEVANT_TYPES.has(node.type) && node.type !== "TEXT" && depth > 0) {
+    // Still walk children to find nested text
+    if ("children" in node) {
+      let childLines = "";
+      for (const child of (node as FrameNode).children) {
+        childLines += buildHierarchy(child, depth);
+        if (childLines.length > MAX_HIERARCHY_CHARS) break;
+      }
+      return childLines;
+    }
+    return "";
+  }
 
   const indent = "  ".repeat(depth);
   const textSuffix = node.type === "TEXT" ? ` "${(node as TextNode).characters?.slice(0, 80) ?? ""}"` : "";
