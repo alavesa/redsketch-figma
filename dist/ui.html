@@ -621,10 +621,24 @@ function buildDesignPrompt(data) {
 // ── System prompt ──────────────────────────────
 function buildSystemPrompt() {
   const scopeInstructions = {
-    screen: `You are analyzing a COMPLETE APPLICATION SCREEN. Check for authentication flows, navigation structure, session management, consent mechanisms, AI disclosure, data protection, and full compliance coverage. Flag missing screens (e.g., no login) as findings.`,
-    flow: `You are analyzing a MULTI-STEP USER FLOW (e.g., onboarding, checkout, signup). Focus on flow integrity, data handling between steps, state management, consent capture at the right moment, and whether the flow exposes data or creates trust gaps. Do NOT flag missing screens outside this flow.`,
-    component: `You are analyzing a SINGLE REUSABLE COMPONENT (e.g., a form, card, input). Focus only on this component's specific concerns: input validation, error states, accessibility, data exposure within the component. Do NOT flag application-level issues like missing login pages or navigation.`,
-    dialog: `You are analyzing a DIALOG or MODAL (e.g., confirmation, alert, consent popup). Focus on: is the action clear? Is the destructive action visually distinct? Is there a cancel/undo path? Are error states handled? Is the language unambiguous? Do NOT flag application-level compliance or missing screens.`,
+    screen: `You are analyzing a COMPLETE APPLICATION SCREEN. Check for authentication flows, navigation structure, session management, consent mechanisms, AI disclosure, data protection, and full compliance coverage. Flag missing screens (e.g., no login) as findings. Report all applicable threats, patterns, and compliance gaps.`,
+    flow: `You are analyzing a MULTI-STEP USER FLOW (e.g., onboarding, checkout, signup). Focus on flow integrity, data handling between steps, state management, consent capture at the right moment, and whether the flow exposes data or creates trust gaps. Do NOT flag missing screens outside this flow. Keep findings to 3-6 threats max.`,
+    component: `You are analyzing a SINGLE REUSABLE COMPONENT (e.g., a form, card, input group). ONLY check this component's specific concerns: input validation, error states, accessibility, data exposure within the component. Do NOT flag application-level issues like missing login pages, missing navigation, session management, cookie consent, or compliance frameworks. Keep findings to 2-5 threats max and only match 2-4 patterns. The risk score should reflect this component only, not the whole application.`,
+    dialog: `You are analyzing a SINGLE DIALOG or MODAL (e.g., confirmation dialog, delete prompt, alert, consent popup). ONLY check:
+- Is the action described clearly?
+- Is the destructive action visually distinct from the safe action?
+- Is there a cancel/undo path?
+- Is the language unambiguous and non-manipulative?
+- Are error states handled?
+- Is it accessible (focus trap, keyboard navigation, screen reader)?
+
+STRICT RULES FOR DIALOG SCOPE:
+- Maximum 1-3 threats. Most dialogs have 0-1 real issues.
+- Maximum 1-3 pattern matches. Only patterns about confirmations, dark patterns, or accessibility.
+- Do NOT check for: authentication, session management, AI disclosure, encryption, audit logs, compliance frameworks, navigation, or any application-level concern.
+- Do NOT flag missing screens or features outside this dialog.
+- Risk score should be LOW or MEDIUM unless the dialog has a genuinely dangerous design flaw (e.g., destructive action styled as the primary/default action).
+- complianceGaps should be empty or contain at most 1 entry (e.g., WCAG if inaccessible, or FTC if confirmshaming).`,
   };
 
   return `You are a senior security architect performing a UI-layer threat model on a Figma design.
