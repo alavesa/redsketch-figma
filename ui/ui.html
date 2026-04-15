@@ -128,6 +128,58 @@
 </head>
 <body>
 
+<!-- First-run onboarding (shown when no API key) -->
+<div id="onboarding" style="display:none; padding: 24px 16px;">
+  <div style="text-align:center; margin-bottom: 20px;">
+    <div style="font-size: 20px; font-weight: 700; color: #ff3333; margin-bottom: 6px;">RedSketch</div>
+    <div style="color: #999; font-size: 11px;">Threat-model your Figma designs</div>
+  </div>
+
+  <div class="card mb-12">
+    <div class="bright mb-4" style="font-size: 11px; font-weight: 600;">How it works</div>
+    <div class="dim" style="font-size: 10px; line-height: 1.6;">
+      1. Select a frame in your Figma design<br>
+      2. RedSketch reads the node names, text content, and structure<br>
+      3. This data is sent to Claude AI for STRIDE threat analysis<br>
+      4. You get a threat model with pattern matches and compliance gaps
+    </div>
+  </div>
+
+  <div class="card mb-12">
+    <div style="color: #ffaa00; font-size: 10px; font-weight: 600; margin-bottom: 6px;">Data &amp; privacy</div>
+    <div class="dim" style="font-size: 10px; line-height: 1.6;">
+      &bull; Your design's node names, text, and hierarchy are sent to <span class="bright">Anthropic's API</span> over HTTPS for analysis<br>
+      &bull; Anthropic does not train on API data or store it beyond the request<br>
+      &bull; Your API key is obfuscated locally and never logged or shared<br>
+      &bull; No data is sent to any other service<br>
+      &bull; You can clear your key anytime in Settings
+    </div>
+  </div>
+
+  <div class="card mb-12">
+    <div class="bright mb-4" style="font-size: 11px; font-weight: 600;">Setup</div>
+    <div class="dim mb-8" style="font-size: 10px;">
+      Enter your Anthropic API key to get started. Get one at
+      <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+    </div>
+    <div class="mb-8" style="position: relative;">
+      <input class="input" type="password" id="onboarding-key-input" placeholder="sk-ant-..." autocomplete="off" />
+    </div>
+    <button class="btn btn-primary" id="btn-onboarding-save">Save key &amp; start</button>
+  </div>
+
+  <div style="text-align:center;">
+    <div class="dim" style="font-size: 9px;">
+      36 patterns &middot; 19 regulations &middot; STRIDE analysis<br>
+      <a href="https://uxsec.dev/redsketch" target="_blank">uxsec.dev/redsketch</a> &middot;
+      <a href="https://github.com/alavesa/RedSketch" target="_blank">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<!-- Main app (hidden until key is set) -->
+<div id="main-app" style="display:none;">
+
 <!-- Tabs -->
 <div class="tabs">
   <button class="tab active" data-tab="scan">Scan</button>
@@ -137,17 +189,20 @@
 
 <!-- Scan Tab -->
 <div id="tab-scan" class="tab-content active">
-  <div style="text-align:center; margin: 24px 0 16px;">
-    <div style="font-size: 16px; font-weight: 700; color: #ff3333; margin-bottom: 4px;">RedSketch</div>
-    <div style="color: #666; font-size: 10px;">Threat-model your designs before writing code</div>
-  </div>
-
-  <div class="card mb-12">
+  <div class="card mb-8" style="margin-top: 12px;">
     <div class="flex-between mb-4">
       <span class="bright" id="selection-name">No selection</span>
       <span class="dim" id="selection-stats"></span>
     </div>
     <div class="dim" style="font-size: 10px;" id="selection-hint">Select a frame or component, then scan</div>
+  </div>
+
+  <!-- Data disclosure before scan -->
+  <div class="card mb-8" id="data-disclosure" style="border-color: rgba(255,170,0,0.3);">
+    <div style="color: #ffaa00; font-size: 10px; font-weight: 600; margin-bottom: 4px;">What gets sent</div>
+    <div class="dim" style="font-size: 10px; line-height: 1.5;">
+      Node names, text content, component names, and hierarchy of the selected frame will be sent to Anthropic's Claude API over HTTPS for analysis. No images or visual data are sent.
+    </div>
   </div>
 
   <button class="btn btn-primary mb-8" id="btn-scan" disabled>
@@ -197,13 +252,25 @@
     Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
   </div>
 
+  <div class="section-header mt-12">Data handling</div>
+  <div class="dim" style="font-size: 10px; line-height: 1.6;">
+    &bull; Design node names, text, and hierarchy are sent to Anthropic's API over HTTPS<br>
+    &bull; No images, visual renders, or pixel data are sent<br>
+    &bull; Anthropic does not train on API data or store it beyond the request<br>
+    &bull; Your API key is obfuscated in local storage and never logged<br>
+    &bull; No analytics, tracking, or third-party services are used
+  </div>
+
   <div class="section-header mt-12">About</div>
   <div class="dim" style="font-size: 10px;">
     RedSketch v1.0.0<br>
     36 patterns &middot; 19 regulations &middot; STRIDE analysis<br>
-    <a href="https://uxsec.dev/redsketch" target="_blank">uxsec.dev/redsketch</a>
+    <a href="https://uxsec.dev/redsketch" target="_blank">uxsec.dev/redsketch</a> &middot;
+    <a href="https://github.com/alavesa/RedSketch" target="_blank">GitHub</a>
   </div>
 </div>
+
+</div><!-- /main-app -->
 
 <!-- Toast container -->
 <div id="toast" class="toast" style="display:none;"></div>
@@ -236,6 +303,10 @@ let threatReport = null;
 // ── Elements ───────────────────────────────────
 const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
+const onboarding = document.getElementById('onboarding');
+const mainApp = document.getElementById('main-app');
+const btnOnboardingSave = document.getElementById('btn-onboarding-save');
+const onboardingKeyInput = document.getElementById('onboarding-key-input');
 const btnScan = document.getElementById('btn-scan');
 const btnSaveKey = document.getElementById('btn-save-key');
 const btnClearKey = document.getElementById('btn-clear-key');
@@ -280,6 +351,36 @@ btnScan.addEventListener('click', () => {
   sendToPlugin({ type: 'scan-design' });
 });
 
+// ── Show/hide onboarding vs main app ───────────
+function showOnboarding() {
+  onboarding.style.display = 'block';
+  mainApp.style.display = 'none';
+}
+function showMainApp() {
+  onboarding.style.display = 'none';
+  mainApp.style.display = 'block';
+}
+
+// ── Onboarding save key ────────────────────────
+btnOnboardingSave.addEventListener('click', () => {
+  const key = onboardingKeyInput.value.trim();
+  if (!key) {
+    showToast('Enter an API key.', 'error');
+    return;
+  }
+  if (!key.startsWith('sk-ant-')) {
+    showToast('Key should start with sk-ant-', 'error');
+    return;
+  }
+  apiKey = key;
+  sendToPlugin({ type: 'save-api-key', apiKey: obfuscate(key) });
+  onboardingKeyInput.value = '';
+  keyStatus.textContent = 'Key saved: sk-ant-...' + key.slice(-4);
+  keyStatus.style.color = '#00ff41';
+  showMainApp();
+  showToast('API key saved. Select a frame and scan.', 'success');
+});
+
 // ── Save key ───────────────────────────────────
 btnSaveKey.addEventListener('click', () => {
   const key = apiKeyInput.value.trim();
@@ -309,6 +410,7 @@ btnClearKey.addEventListener('click', () => {
   keyStatus.style.color = '#555';
   btnScan.disabled = true;
   showToast('API key cleared.', 'success');
+  showOnboarding();
 });
 
 // ── Toggle key visibility ──────────────────────
@@ -332,16 +434,15 @@ window.onmessage = async (event) => {
       if (msg.apiKey) {
         apiKey = deobfuscate(msg.apiKey);
         if (apiKey && apiKey.startsWith('sk-ant-')) {
-          btnScan.disabled = false;
           keyStatus.textContent = 'Key saved: sk-ant-...' + apiKey.slice(-4);
           keyStatus.style.color = '#00ff41';
-          selectionHint.textContent = 'Select a frame or component, then scan';
+          showMainApp();
         } else {
           apiKey = '';
-          selectionHint.textContent = 'Set your API key in Settings first';
+          showOnboarding();
         }
       } else {
-        selectionHint.textContent = 'Set your API key in Settings first';
+        showOnboarding();
       }
       break;
 
