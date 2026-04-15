@@ -345,6 +345,20 @@ window.onmessage = async (event) => {
       }
       break;
 
+    case 'selection-changed':
+      if (msg.name) {
+        selectionName.textContent = msg.name;
+        selectionStats.textContent = msg.nodeType + (msg.childCount ? ' · ' + msg.childCount + ' children' : '');
+        selectionHint.textContent = 'Ready to scan';
+        if (apiKey) btnScan.disabled = false;
+      } else {
+        selectionName.textContent = 'No selection';
+        selectionStats.textContent = '';
+        selectionHint.textContent = 'Select a frame or component, then scan';
+        btnScan.disabled = true;
+      }
+      break;
+
     case 'scan-result':
       scanData = msg.data;
       selectionName.textContent = msg.data.selectionName;

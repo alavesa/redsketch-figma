@@ -50,4 +50,34 @@ function sendToUI(msg: UIMessage) {
   figma.ui.postMessage(msg);
 }
 
+function sendSelectionUpdate() {
+  const selection = figma.currentPage.selection;
+  if (selection.length > 0) {
+    const node = selection[0];
+    let childCount = 0;
+    if ("children" in node) {
+      childCount = (node as FrameNode).children.length;
+    }
+    figma.ui.postMessage({
+      type: "selection-changed",
+      name: node.name,
+      nodeType: node.type,
+      childCount,
+    });
+  } else {
+    figma.ui.postMessage({
+      type: "selection-changed",
+      name: "",
+      nodeType: "",
+      childCount: 0,
+    });
+  }
+}
+
+// Listen for selection changes
+figma.on("selectionchange", sendSelectionUpdate);
+
+// Send initial selection state
+sendSelectionUpdate();
+
 figma.ui.onmessage = handleMessage;
