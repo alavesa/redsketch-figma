@@ -21,7 +21,7 @@
     letter-spacing: 0.5px; transition: all 0.15s;
   }
   .tab:hover { color: #ccc; }
-  .tab.active { color: #ff3333; border-bottom: 2px solid #ff3333; }
+  .tab.active { color: #e0e0e0; border-bottom: 2px solid #e0e0e0; }
 
   .tab-content { display: none; padding: 16px; }
   .tab-content.active { display: block; }
@@ -32,9 +32,9 @@
     width: 100%; padding: 10px 16px; border: none; border-radius: 6px;
     font-family: inherit; font-size: 11px; cursor: pointer; transition: all 0.15s;
   }
-  .btn-primary { background: #ff3333; color: #111; font-weight: 600; }
-  .btn-primary:hover { background: #ff5555; }
-  .btn-primary:disabled { background: #444; color: #666; cursor: not-allowed; }
+  .btn-primary { background: #e0e0e0; color: #111; font-weight: 600; }
+  .btn-primary:hover { background: #fff; }
+  .btn-primary:disabled { background: #333; color: #555; cursor: not-allowed; }
   .btn-secondary { background: #222; color: #aaa; border: 1px solid #333; }
   .btn-secondary:hover { border-color: #555; color: #ccc; }
 
@@ -44,7 +44,7 @@
     background: #111; color: #e0e0e0; font-family: inherit; font-size: 11px;
     outline: none; transition: border-color 0.15s;
   }
-  .input:focus { border-color: #ff3333; }
+  .input:focus { border-color: #888; }
   .input::placeholder { color: #555; }
 
   /* Cards */
@@ -54,7 +54,7 @@
   }
   .card:hover { border-color: #444; }
   .card-clickable { cursor: pointer; }
-  .card-clickable:hover { border-color: #ff3333; }
+  .card-clickable:hover { border-color: #888; }
 
   /* Severity */
   .sev-critical { color: #ff3333; }
@@ -92,7 +92,7 @@
   /* Spinner */
   .spinner {
     display: inline-block; width: 14px; height: 14px;
-    border: 2px solid #333; border-top-color: #ff3333;
+    border: 2px solid #333; border-top-color: #999;
     border-radius: 50%; animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -121,7 +121,7 @@
     font-size: 10px; cursor: pointer; transition: all 0.15s;
   }
   .scope-btn:hover { border-color: #555; color: #ccc; }
-  .scope-btn.active { border-color: #ff3333; color: #ff3333; background: rgba(255,51,51,0.1); }
+  .scope-btn.active { border-color: #888; color: #e0e0e0; background: rgba(255,255,255,0.05); }
 
   /* Flex helpers */
   .flex { display: flex; }
@@ -140,7 +140,7 @@
 <!-- First-run onboarding (shown when no API key) -->
 <div id="onboarding" style="display:none; padding: 24px 16px;">
   <div style="text-align:center; margin-bottom: 20px;">
-    <div style="font-size: 20px; font-weight: 700; color: #ff3333; margin-bottom: 6px;">RedSketch</div>
+    <div style="font-size: 14px; font-weight: 600; color: #cc3333; margin-bottom: 6px;">RedSketch</div>
     <div style="color: #999; font-size: 11px;">Threat-model your Figma designs</div>
   </div>
 
