@@ -1,7 +1,5 @@
 # RedSketch — Figma Plugin
 
-[![npm version](https://img.shields.io/npm/v/redsketch)](https://www.npmjs.com/package/redsketch)
-
 Threat-model your Figma designs before writing a single line of code — directly inside Figma.
 
 ## How it works
