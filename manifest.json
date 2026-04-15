@@ -1,0 +1,13 @@
+{
+  "name": "RedSketch",
+  "id": "redsketch-threat-model",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "capabilities": [],
+  "enableProposedApi": false,
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["https://api.anthropic.com"]
+  }
+}

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    background: #1a1a1a;
+    color: #b0b0b0;
+    overflow-y: auto;
+  }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid #333; background: #111; }
+  .tab {
+    flex: 1; padding: 10px 8px; text-align: center; cursor: pointer;
+    border: none; background: transparent; color: #777;
+    font-family: inherit; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.5px; transition: all 0.15s;
+  }
+  .tab:hover { color: #ccc; }
+  .tab.active { color: #ff3333; border-bottom: 2px solid #ff3333; }
+
+  .tab-content { display: none; padding: 16px; }
+  .tab-content.active { display: block; }
+
+  /* Buttons */
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 10px 16px; border: none; border-radius: 6px;
+    font-family: inherit; font-size: 11px; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: #ff3333; color: #111; font-weight: 600; }
+  .btn-primary:hover { background: #ff5555; }
+  .btn-primary:disabled { background: #444; color: #666; cursor: not-allowed; }
+  .btn-secondary { background: #222; color: #aaa; border: 1px solid #333; }
+  .btn-secondary:hover { border-color: #555; color: #ccc; }
+
+  /* Input */
+  .input {
+    width: 100%; padding: 8px 12px; border: 1px solid #333; border-radius: 6px;
+    background: #111; color: #e0e0e0; font-family: inherit; font-size: 11px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .input:focus { border-color: #ff3333; }
+  .input::placeholder { color: #555; }
+
+  /* Cards */
+  .card {
+    background: #111; border: 1px solid #333; border-radius: 8px;
+    padding: 12px; margin-bottom: 8px;
+  }
+  .card:hover { border-color: #444; }
+  .card-clickable { cursor: pointer; }
+  .card-clickable:hover { border-color: #ff3333; }
+
+  /* Severity */
+  .sev-critical { color: #ff3333; }
+  .sev-high { color: #ff6633; }
+  .sev-medium { color: #ffaa00; }
+  .sev-low { color: #4488ff; }
+
+  /* Labels */
+  .label {
+    display: inline-block; padding: 2px 6px; border-radius: 3px;
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .label-critical { background: rgba(255,51,51,0.15); color: #ff3333; }
+  .label-high { background: rgba(255,102,51,0.15); color: #ff6633; }
+  .label-medium { background: rgba(255,170,0,0.15); color: #ffaa00; }
+  .label-low { background: rgba(68,136,255,0.15); color: #4488ff; }
+  .label-pattern { background: rgba(192,132,252,0.15); color: #c084fc; }
+
+  /* Section headers */
+  .section-header {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+    color: #666; margin: 16px 0 8px; padding-bottom: 4px;
+    border-bottom: 1px solid #222;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 16px; left: 16px; right: 16px;
+    padding: 10px 14px; border-radius: 6px; font-size: 11px;
+    z-index: 100; transition: opacity 0.3s; text-align: center;
+  }
+  .toast-error { background: rgba(255,51,51,0.15); color: #ff3333; border: 1px solid rgba(255,51,51,0.3); }
+  .toast-success { background: rgba(0,255,65,0.15); color: #00ff41; border: 1px solid rgba(0,255,65,0.3); }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid #333; border-top-color: #ff3333;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Scrollable results */
+  .results-list { max-height: 400px; overflow-y: auto; }
+
+  /* Risk score banner */
+  .risk-banner {
+    text-align: center; padding: 12px; border-radius: 8px;
+    margin-bottom: 12px; font-weight: 600; font-size: 13px;
+  }
+
+  /* Links */
+  a { color: #c084fc; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Dimmed text */
+  .dim { color: #555; }
+  .bright { color: #e0e0e0; }
+
+  /* Flex helpers */
+  .flex { display: flex; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .gap-4 { gap: 4px; }
+  .gap-8 { gap: 8px; }
+  .mb-4 { margin-bottom: 4px; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-12 { margin-bottom: 12px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" data-tab="scan">Scan</button>
+  <button class="tab" data-tab="results">Results</button>
+  <button class="tab" data-tab="settings">Settings</button>
+</div>
+
+<!-- Scan Tab -->
+<div id="tab-scan" class="tab-content active">
+  <div style="text-align:center; margin: 24px 0 16px;">
+    <div style="font-size: 16px; font-weight: 700; color: #ff3333; margin-bottom: 4px;">RedSketch</div>
+    <div style="color: #666; font-size: 10px;">Threat-model your designs before writing code</div>
+  </div>
+
+  <div class="card mb-12">
+    <div class="flex-between mb-4">
+      <span class="bright" id="selection-name">No selection</span>
+      <span class="dim" id="selection-stats"></span>
+    </div>
+    <div class="dim" style="font-size: 10px;" id="selection-hint">Select a frame or component, then scan</div>
+  </div>
+
+  <button class="btn btn-primary mb-8" id="btn-scan" disabled>
+    Scan for threats
+  </button>
+
+  <div id="scan-status" style="text-align:center; display:none;">
+    <div class="spinner" style="margin: 0 auto 8px;"></div>
+    <div class="dim" id="scan-status-text">Reading design...</div>
+  </div>
+
+  <div class="mt-12" style="text-align:center;">
+    <div class="dim" style="font-size: 10px;">Powered by Claude AI &middot; 36 security UX patterns</div>
+    <div class="dim" style="font-size: 10px; margin-top: 2px;">
+      <a href="https://uxsec.dev" target="_blank">uxsec.dev</a> &middot;
+      <a href="https://github.com/alavesa/RedSketch" target="_blank">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<!-- Results Tab -->
+<div id="tab-results" class="tab-content">
+  <div id="results-empty" style="text-align:center; padding: 40px 0; color: #555;">
+    No scan results yet. Select a frame and run a scan.
+  </div>
+  <div id="results-content" style="display:none;">
+    <!-- Populated by JS -->
+  </div>
+</div>
+
+<!-- Settings Tab -->
+<div id="tab-settings" class="tab-content">
+  <div class="section-header">Anthropic API Key</div>
+  <div class="mb-8">
+    <input class="input" type="password" id="api-key-input" placeholder="sk-ant-..." />
+  </div>
+  <button class="btn btn-secondary mb-12" id="btn-save-key">Save key</button>
+  <div class="dim" style="font-size: 10px;">
+    Your API key is stored locally in Figma's plugin storage. It never leaves your machine except to call the Anthropic API directly.
+  </div>
+  <div class="dim" style="font-size: 10px; margin-top: 8px;">
+    Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+  </div>
+
+  <div class="section-header mt-12">About</div>
+  <div class="dim" style="font-size: 10px;">
+    RedSketch v1.0.0<br>
+    36 patterns &middot; 19 regulations &middot; STRIDE analysis<br>
+    <a href="https://uxsec.dev/redsketch" target="_blank">uxsec.dev/redsketch</a>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast" class="toast" style="display:none;"></div>
+
+<script>
+// ── State ──────────────────────────────────────
+let apiKey = "";
+let scanData = null;
+let threatReport = null;
+
+// ── Elements ───────────────────────────────────
+const tabs = document.querySelectorAll('.tab');
+const tabContents = document.querySelectorAll('.tab-content');
+const btnScan = document.getElementById('btn-scan');
+const btnSaveKey = document.getElementById('btn-save-key');
+const apiKeyInput = document.getElementById('api-key-input');
+const selectionName = document.getElementById('selection-name');
+const selectionStats = document.getElementById('selection-stats');
+const selectionHint = document.getElementById('selection-hint');
+const scanStatus = document.getElementById('scan-status');
+const scanStatusText = document.getElementById('scan-status-text');
+const resultsEmpty = document.getElementById('results-empty');
+const resultsContent = document.getElementById('results-content');
+
+// ── Tabs ───────────────────────────────────────
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tabContents.forEach(tc => tc.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Plugin messaging ───────────────────────────
+function sendToPlugin(msg) {
+  parent.postMessage({ pluginMessage: msg }, '*');
+}
+
+// Load API key on startup
+sendToPlugin({ type: 'load-api-key' });
+
+// ── Scan button ────────────────────────────────
+btnScan.addEventListener('click', () => {
+  if (!apiKey) {
+    showToast('Set your Anthropic API key in Settings first.', 'error');
+    return;
+  }
+  btnScan.disabled = true;
+  scanStatus.style.display = 'block';
+  scanStatusText.textContent = 'Reading design...';
+  sendToPlugin({ type: 'scan-design' });
+});
+
+// ── Save key ───────────────────────────────────
+btnSaveKey.addEventListener('click', () => {
+  const key = apiKeyInput.value.trim();
+  if (!key) {
+    showToast('Enter an API key.', 'error');
+    return;
+  }
+  apiKey = key;
+  sendToPlugin({ type: 'save-api-key', apiKey: key });
+  showToast('API key saved.', 'success');
+  btnScan.disabled = false;
+});
+
+// ── Messages from plugin ───────────────────────
+window.onmessage = async (event) => {
+  const msg = event.data.pluginMessage;
+  if (!msg) return;
+
+  switch (msg.type) {
+    case 'api-key-loaded':
+      apiKey = msg.apiKey || '';
+      if (apiKey) {
+        apiKeyInput.value = apiKey;
+        btnScan.disabled = false;
+        selectionHint.textContent = 'Select a frame or component, then scan';
+      } else {
+        selectionHint.textContent = 'Set your API key in Settings first';
+      }
+      break;
+
+    case 'scan-result':
+      scanData = msg.data;
+      selectionName.textContent = msg.data.selectionName;
+      selectionStats.textContent = `${msg.data.nodeCount} nodes`;
+      scanStatusText.textContent = 'Analyzing with Claude...';
+      await runThreatModel(msg.data);
+      break;
+
+    case 'error':
+      showToast(msg.message, 'error');
+      scanStatus.style.display = 'none';
+      btnScan.disabled = false;
+      break;
+  }
+};
+
+// ── Claude API call ────────────────────────────
+async function runThreatModel(data) {
+  const designContent = buildDesignPrompt(data);
+  const systemPrompt = buildSystemPrompt();
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 16384,
+        temperature: 1,
+        thinking: { type: 'enabled', budget_tokens: 8000 },
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        messages: [{ role: 'user', content: designContent }],
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error ${response.status}`);
+    }
+
+    const result = await response.json();
+    const textBlock = result.content.find(b => b.type === 'text');
+    if (!textBlock) throw new Error('No text response from Claude.');
+
+    threatReport = JSON.parse(textBlock.text);
+    renderResults(threatReport);
+
+    scanStatus.style.display = 'none';
+    btnScan.disabled = false;
+
+    // Switch to results tab
+    tabs.forEach(t => t.classList.remove('active'));
+    tabContents.forEach(tc => tc.classList.remove('active'));
+    document.querySelector('[data-tab="results"]').classList.add('active');
+    document.getElementById('tab-results').classList.add('active');
+
+  } catch (err) {
+    showToast('Analysis failed: ' + err.message, 'error');
+    scanStatus.style.display = 'none';
+    btnScan.disabled = false;
+  }
+}
+
+// ── Build design prompt ────────────────────────
+function buildDesignPrompt(data) {
+  const parts = [
+    `Analyze the following Figma design structure for security threats.\n`,
+    `## Design: ${data.pageName} / ${data.selectionName}`,
+    `## Stats: ${data.nodeCount} nodes, ${data.textContent.length} text elements, ${data.componentNames.length} components\n`,
+  ];
+
+  parts.push('## Component Names');
+  if (data.componentNames.length > 0) {
+    data.componentNames.forEach(n => parts.push(`- ${n}`));
+  } else {
+    parts.push('(none)');
+  }
+
+  parts.push('\n## Text Content');
+  const uniqueText = [...new Set(data.textContent)].slice(0, 150);
+  if (uniqueText.length > 0) {
+    uniqueText.forEach(t => parts.push(`- "${t}"`));
+  } else {
+    parts.push('(none)');
+  }
+
+  parts.push('\n## Design Hierarchy');
+  parts.push(data.hierarchy);
+
+  return parts.join('\n');
+}
+
+// ── System prompt ──────────────────────────────
+function buildSystemPrompt() {
+  return `You are a senior security architect performing a UI-layer threat model on a Figma design.
+
+Analyze the design and produce a JSON response with this exact structure:
+{
+  "designSummary": "...",
+  "assets": [{ "id": "a1", "name": "...", "type": "...", "description": "...", "sensitivityLevel": "critical|high|medium|low" }],
+  "threats": [{ "assetId": "a1", "strideCategory": "spoofing|tampering|repudiation|information-disclosure|denial-of-service|elevation-of-privilege", "title": "...", "description": "...", "severity": "critical|high|medium|low", "missingControls": ["..."] }],
+  "patternMatches": [{ "patternLabel": "...", "category": "...", "relevance": "directly-applicable|recommended|consider", "reason": "...", "url": "https://uxsec.dev/patterns/..." }],
+  "complianceGaps": [{ "regulation": "...", "gap": "...", "severity": "critical|high|medium|low", "requiredPatterns": ["..."] }],
+  "riskScore": "critical|high|medium|low|none",
+  "summary": "..."
+}
+
+RESPOND WITH ONLY VALID JSON. No markdown, no explanation, no code fences.
+
+Look for: authentication flows, data inputs, file uploads, payment flows, admin panels, consent screens, data displays, AI features, industrial interfaces.
+
+Use STRIDE: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege.
+
+Match against these Security UX patterns from uxsec.dev:
+- Auth: Login Flow, MFA, Password Strength, Session Timeout, Account Recovery, Passkeys, OAuth Consent, Accessible Auth
+- Threat: Breach Notification, Phishing Warning, Suspicious Activity
+- Dark Patterns: Confirmshaming, Cookie Consent, Hidden Unsubscribe, Privacy Zuckering, Bait & Switch, Forced Continuity
+- Data: Encryption Indicators, Secure File Upload, Data Deletion, Activity & Audit Log
+- OWASP: Broken Access Control, Security Misconfiguration, Logging & Monitoring
+- AI: AI Disclosure, AI Content Labeling, AI Decision Explanation, AI Input Safety, Human Override & AI Kill Switch
+- Industrial: Operator Auth, Safety-Critical Confirmation, Alarm Fatigue, Navigation & Levels of Detail
+- Governance: Security Design Review, Change Management, Compliance Audit
+
+Check against: GDPR, CCPA, SOC 2, ISO 27001, PCI DSS 4.0, FTC Act, EU AI Act, US AI Laws, NIS2, DORA, CRA, EAA, IEC 62443, IEC 61511, ISA-18.2, ISA-101, WebAuthn/FIDO2, WCAG 2.2, ISO/IEC 42001.
+
+Focus on what IS and ISN'T visible in the design. Missing UI elements are findings.`;
+}
+
+// ── Render results ─────────────────────────────
+function renderResults(report) {
+  resultsEmpty.style.display = 'none';
+  resultsContent.style.display = 'block';
+
+  const riskColors = {
+    critical: '#ff3333', high: '#ff6633',
+    medium: '#ffaa00', low: '#4488ff', none: '#00ff41'
+  };
+  const riskBg = {
+    critical: 'rgba(255,51,51,0.15)', high: 'rgba(255,102,51,0.15)',
+    medium: 'rgba(255,170,0,0.15)', low: 'rgba(68,136,255,0.15)', none: 'rgba(0,255,65,0.15)'
+  };
+  const strideIcons = {
+    'spoofing': '&#x1F464;', 'tampering': '&#x1F527;', 'repudiation': '&#x1F4DD;',
+    'information-disclosure': '&#x1F441;', 'denial-of-service': '&#x1F6AB;',
+    'elevation-of-privilege': '&#x2B06;'
+  };
+  const relevanceIcons = { 'directly-applicable': '&#x2705;', 'recommended': '&#x2B50;', 'consider': '&#x1F4A1;' };
+
+  let html = '';
+
+  // Risk banner
+  html += `<div class="risk-banner" style="background:${riskBg[report.riskScore]};color:${riskColors[report.riskScore]};border:1px solid ${riskColors[report.riskScore]}33">
+    Risk: ${report.riskScore.toUpperCase()}
+  </div>`;
+
+  // Summary
+  html += `<div class="card mb-12"><div class="dim" style="font-size:10px;line-height:1.5">${escHtml(report.summary)}</div></div>`;
+
+  // Stats
+  html += `<div class="flex gap-8 mb-12" style="justify-content:center;text-align:center">
+    <div><div class="bright" style="font-size:16px;font-weight:700">${report.assets.length}</div><div class="dim" style="font-size:9px">assets</div></div>
+    <div><div class="bright" style="font-size:16px;font-weight:700">${report.threats.length}</div><div class="dim" style="font-size:9px">threats</div></div>
+    <div><div class="bright" style="font-size:16px;font-weight:700">${report.patternMatches.length}</div><div class="dim" style="font-size:9px">patterns</div></div>
+    <div><div class="bright" style="font-size:16px;font-weight:700">${report.complianceGaps.length}</div><div class="dim" style="font-size:9px">gaps</div></div>
+  </div>`;
+
+  // Threats
+  if (report.threats.length > 0) {
+    html += '<div class="section-header">STRIDE Threats</div>';
+    html += '<div class="results-list">';
+    report.threats.forEach(t => {
+      const icon = strideIcons[t.strideCategory] || '&#x26A0;';
+      html += `<div class="card">
+        <div class="flex-between mb-4">
+          <span>${icon} <span class="bright">${escHtml(t.title)}</span></span>
+          <span class="label label-${t.severity}">${t.severity}</span>
+        </div>
+        <div class="dim mb-4">${escHtml(t.description)}</div>
+        ${t.missingControls && t.missingControls.length > 0
+          ? `<div style="color:#ffaa00;font-size:10px">Missing: ${t.missingControls.map(escHtml).join(', ')}</div>`
+          : ''}
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  // Pattern matches
+  if (report.patternMatches.length > 0) {
+    html += '<div class="section-header">Matched Patterns</div>';
+    report.patternMatches.forEach(p => {
+      const icon = relevanceIcons[p.relevance] || '';
+      html += `<div class="card">
+        <div class="flex-between mb-4">
+          <span>${icon} <span class="bright">${escHtml(p.patternLabel)}</span> <span class="label label-pattern">${escHtml(p.category)}</span></span>
+        </div>
+        <div class="dim mb-4">${escHtml(p.reason)}</div>
+        <a href="${escHtml(p.url)}" target="_blank" style="font-size:10px">${escHtml(p.url)}</a>
+      </div>`;
+    });
+  }
+
+  // Compliance gaps
+  if (report.complianceGaps.length > 0) {
+    html += '<div class="section-header">Compliance Gaps</div>';
+    report.complianceGaps.forEach(g => {
+      html += `<div class="card">
+        <div class="flex-between mb-4">
+          <span class="bright">${escHtml(g.regulation)}</span>
+          <span class="label label-${g.severity}">${g.severity}</span>
+        </div>
+        <div class="dim mb-4">${escHtml(g.gap)}</div>
+        ${g.requiredPatterns && g.requiredPatterns.length > 0
+          ? `<div style="color:#ffaa00;font-size:10px">Required: ${g.requiredPatterns.map(escHtml).join(', ')}</div>`
+          : ''}
+      </div>`;
+    });
+  }
+
+  resultsContent.innerHTML = html;
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Toast ──────────────────────────────────────
+function showToast(message, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'toast toast-' + type;
+  toast.style.display = 'block';
+  setTimeout(() => { toast.style.display = 'none'; }, 3000);
+}
+</script>
+</body>
+</html>
