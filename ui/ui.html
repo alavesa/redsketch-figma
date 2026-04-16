@@ -352,6 +352,7 @@ const keyStatus = document.getElementById('key-status');
 const selectionCard = document.getElementById('selection-card');
 const scanActions = document.getElementById('scan-actions');
 let abortController = null;
+let thinkingInterval = null;
 const selectionName = document.getElementById('selection-name');
 const selectionStats = document.getElementById('selection-stats');
 const selectionHint = document.getElementById('selection-hint');
@@ -401,6 +402,7 @@ btnScan.addEventListener('click', () => {
 });
 
 btnCancel.addEventListener('click', () => {
+  if (thinkingInterval) { clearInterval(thinkingInterval); thinkingInterval = null; }
   if (abortController) {
     abortController.abort();
     abortController = null;
@@ -550,7 +552,22 @@ async function runThreatModel(data) {
   const systemPrompt = buildSystemPrompt();
 
   try {
-    scanStatusText.textContent = 'Calling Claude API...';
+    const thinkingMessages = [
+      'Analyzing design structure...',
+      'Checking authentication flows...',
+      'Running STRIDE analysis...',
+      'Matching against 36 patterns...',
+      'Checking 19 regulations...',
+      'Evaluating compliance gaps...',
+      'Assessing threat severity...',
+      'Almost there...',
+    ];
+    let thinkingIdx = 0;
+    scanStatusText.textContent = thinkingMessages[0];
+    thinkingInterval = setInterval(() => {
+      thinkingIdx = (thinkingIdx + 1) % thinkingMessages.length;
+      scanStatusText.textContent = thinkingMessages[thinkingIdx];
+    }, 3500);
 
     abortController = new AbortController();
 
@@ -598,6 +615,7 @@ async function runThreatModel(data) {
     } catch (parseErr) {
       throw new Error('Failed to parse Claude response as JSON. Response preview: ' + jsonText.slice(0, 150));
     }
+    clearInterval(thinkingInterval);
     abortController = null;
     renderResults(threatReport);
 
@@ -612,6 +630,7 @@ async function runThreatModel(data) {
     document.getElementById('tab-results').classList.add('active');
 
   } catch (err) {
+    clearInterval(thinkingInterval);
     abortController = null;
     if (err.name === 'AbortError') return; // User cancelled — already handled
     showToast('Analysis failed: ' + err.message, 'error');
