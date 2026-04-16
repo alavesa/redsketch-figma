@@ -2,6 +2,8 @@
 
 Threat-model your Figma designs before writing a single line of code — directly inside Figma.
 
+<img width="1200" height="750" alt="redsketch_demo" src="https://github.com/user-attachments/assets/c882c665-0c7f-4cae-a224-bc6b49a05060" />
+
 ## How it works
 
 1. Select a frame, component, or dialog in Figma
