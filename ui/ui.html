@@ -945,13 +945,25 @@ function copySummary() {
   if (!threatReport) return;
   const r = threatReport;
   const lines = [
-    `RedSketch — Risk: ${r.riskScore.toUpperCase()}`,
-    `${r.assets.length} assets · ${r.threats.length} threats · ${r.patternMatches.length} patterns · ${r.complianceGaps.length} compliance gaps`,
+    `RedSketch Threat Model`,
+    `Risk: ${r.riskScore.toUpperCase()} — ${r.assets.length} assets, ${r.threats.length} threats, ${r.patternMatches.length} patterns, ${r.complianceGaps.length} compliance gaps`,
     ``,
     r.summary,
-    ``,
-    `AI-generated analysis · uxsec.dev/redsketch`,
   ];
+  if (r.threats.length > 0) {
+    lines.push('', 'Threats:');
+    r.threats.forEach(t => lines.push(`  ${t.severity.toUpperCase()} — ${t.title}`));
+  }
+  if (r.patternMatches.length > 0) {
+    lines.push('', 'Recommended patterns:');
+    r.patternMatches.forEach(p => lines.push(`  ${p.patternLabel} (${p.relevance}) — ${p.url}`));
+  }
+  if (r.complianceGaps.length > 0) {
+    lines.push('', 'Compliance gaps:');
+    r.complianceGaps.forEach(g => lines.push(`  ${g.severity.toUpperCase()} ${g.regulation} — ${g.gap.slice(0, 150)}`));
+  }
+  lines.push('', 'AI-generated analysis by Claude. Not a substitute for a human security review.');
+  lines.push('uxsec.dev/redsketch');
 
   copyText(lines.join('\n'), 'btn-copy-summary', 'Copy summary');
 }
