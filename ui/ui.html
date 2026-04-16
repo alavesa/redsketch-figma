@@ -123,6 +123,29 @@
   .scope-btn:hover { border-color: #555; color: #ccc; }
   .scope-btn.active { border-color: #888; color: #e0e0e0; background: rgba(255,255,255,0.05); }
 
+  /* Collapsible sections */
+  .collapsible {
+    cursor: pointer; user-select: none;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid #222;
+    margin-bottom: 0; transition: all 0.15s;
+  }
+  .collapsible:hover { color: #ccc; }
+  .collapsible .arrow {
+    transition: transform 0.2s; font-size: 10px; color: #555;
+  }
+  .collapsible.open .arrow { transform: rotate(90deg); }
+  .collapsible-content {
+    max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
+  }
+  .collapsible-content.open {
+    max-height: 5000px;
+  }
+  .section-count {
+    font-size: 9px; padding: 2px 6px; border-radius: 3px;
+    background: rgba(255,255,255,0.05); color: #888; margin-left: 6px;
+  }
+
   /* Flex helpers */
   .flex { display: flex; }
   .flex-between { display: flex; justify-content: space-between; align-items: center; }
@@ -759,11 +782,8 @@ function renderResults(report) {
     Risk: ${report.riskScore.toUpperCase()}
   </div>`;
 
-  // Summary
-  html += `<div class="card mb-12"><div class="dim" style="font-size:10px;line-height:1.5">${escHtml(report.summary)}</div></div>`;
-
   // Stats
-  html += `<div class="flex gap-8 mb-12" style="justify-content:center;text-align:center">
+  html += `<div class="flex gap-8 mb-8" style="justify-content:center;text-align:center">
     <div><div class="bright" style="font-size:16px;font-weight:700">${report.assets.length}</div><div class="dim" style="font-size:9px">assets</div></div>
     <div><div class="bright" style="font-size:16px;font-weight:700">${report.threats.length}</div><div class="dim" style="font-size:9px">threats</div></div>
     <div><div class="bright" style="font-size:16px;font-weight:700">${report.patternMatches.length}</div><div class="dim" style="font-size:9px">patterns</div></div>
@@ -771,18 +791,36 @@ function renderResults(report) {
   </div>`;
 
   // Copy buttons
-  html += `<div class="flex gap-8 mb-12">
+  html += `<div class="flex gap-8 mb-8">
     <button class="btn btn-secondary" style="flex:1;font-size:10px" id="btn-copy-ai" onclick="copyForAI()">Copy for AI</button>
     <button class="btn btn-secondary" style="flex:1;font-size:10px" id="btn-copy-summary" onclick="copySummary()">Copy summary</button>
   </div>`;
 
-  // Threats
+  // Collapsible: Summary
+  html += `<div class="collapsible" onclick="toggleSection(this)">
+    <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#666">Summary</span>
+    <span class="arrow">&#x25B6;</span>
+  </div>
+  <div class="collapsible-content">
+    <div class="card" style="margin-top:8px"><div class="dim" style="font-size:10px;line-height:1.5">${escHtml(report.summary)}</div></div>
+  </div>`;
+
+  // Collapsible: Threats
   if (report.threats.length > 0) {
-    html += '<div class="section-header">STRIDE Threats</div>';
-    html += '<div class="results-list">';
+    const critCount = report.threats.filter(t => t.severity === 'critical').length;
+    const highCount = report.threats.filter(t => t.severity === 'high').length;
+    let sevBadges = '';
+    if (critCount > 0) sevBadges += `<span class="label label-critical" style="margin-left:4px">${critCount} critical</span>`;
+    if (highCount > 0) sevBadges += `<span class="label label-high" style="margin-left:4px">${highCount} high</span>`;
+
+    html += `<div class="collapsible" onclick="toggleSection(this)">
+      <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#666">Threats <span class="section-count">${report.threats.length}</span>${sevBadges}</span>
+      <span class="arrow">&#x25B6;</span>
+    </div>
+    <div class="collapsible-content">`;
     report.threats.forEach(t => {
       const icon = strideIcons[t.strideCategory] || '&#x26A0;';
-      html += `<div class="card">
+      html += `<div class="card" style="margin-top:6px">
         <div class="flex-between mb-4">
           <span>${icon} <span class="bright">${escHtml(t.title)}</span></span>
           <span class="label label-${t.severity}">${t.severity}</span>
@@ -796,26 +834,41 @@ function renderResults(report) {
     html += '</div>';
   }
 
-  // Pattern matches
+  // Collapsible: Patterns
   if (report.patternMatches.length > 0) {
-    html += '<div class="section-header">Matched Patterns</div>';
+    const directCount = report.patternMatches.filter(p => p.relevance === 'directly-applicable').length;
+    let relBadge = directCount > 0 ? `<span class="label label-pattern" style="margin-left:4px">${directCount} required</span>` : '';
+
+    html += `<div class="collapsible" onclick="toggleSection(this)">
+      <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#666">Patterns <span class="section-count">${report.patternMatches.length}</span>${relBadge}</span>
+      <span class="arrow">&#x25B6;</span>
+    </div>
+    <div class="collapsible-content">`;
     report.patternMatches.forEach(p => {
       const icon = relevanceIcons[p.relevance] || '';
-      html += `<div class="card">
+      html += `<div class="card" style="margin-top:6px">
         <div class="flex-between mb-4">
           <span>${icon} <span class="bright">${escHtml(p.patternLabel)}</span> <span class="label label-pattern">${escHtml(p.category)}</span></span>
         </div>
         <div class="dim mb-4">${escHtml(p.reason)}</div>
-        <a href="${escHtml(p.url)}" target="_blank" style="font-size:10px">${escHtml(p.url)}</a>
+        <a href="${escHtml(p.url)}" target="_blank" style="font-size:10px;color:#00cc66">${escHtml(p.url)}</a>
       </div>`;
     });
+    html += '</div>';
   }
 
-  // Compliance gaps
+  // Collapsible: Compliance gaps
   if (report.complianceGaps.length > 0) {
-    html += '<div class="section-header">Compliance Gaps</div>';
+    const critGaps = report.complianceGaps.filter(g => g.severity === 'critical').length;
+    let gapBadge = critGaps > 0 ? `<span class="label label-critical" style="margin-left:4px">${critGaps} critical</span>` : '';
+
+    html += `<div class="collapsible" onclick="toggleSection(this)">
+      <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#666">Compliance <span class="section-count">${report.complianceGaps.length}</span>${gapBadge}</span>
+      <span class="arrow">&#x25B6;</span>
+    </div>
+    <div class="collapsible-content">`;
     report.complianceGaps.forEach(g => {
-      html += `<div class="card">
+      html += `<div class="card" style="margin-top:6px">
         <div class="flex-between mb-4">
           <span class="bright">${escHtml(g.regulation)}</span>
           <span class="label label-${g.severity}">${g.severity}</span>
@@ -826,9 +879,16 @@ function renderResults(report) {
           : ''}
       </div>`;
     });
+    html += '</div>';
   }
 
   resultsContent.innerHTML = html;
+}
+
+function toggleSection(el) {
+  el.classList.toggle('open');
+  const content = el.nextElementSibling;
+  if (content) content.classList.toggle('open');
 }
 
 // ── Copy for AI ────────────────────────────────
